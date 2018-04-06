@@ -21,8 +21,8 @@ def get_tau(im1, im2, k):
     h2 = np.histogram(im2, 256, [0,255])[0]
     c1 = np.cumsum(h1)
     c2 = np.cumsum(h2)
-    c1 = c1/c1[-1]
-    c2 = c2/c2[-1]
+    c1 = c1/float(c1[-1])
+    c2 = c2/float(c2[-1])
     n = 256
     tau = np.zeros(n)
     #map the brightnesses in image 1 to those of image 2
