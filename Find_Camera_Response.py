@@ -6,6 +6,7 @@ import numpy as np
 import numpy.linalg as la
 import cv2
 import matplotlib.pyplot as pl
+import csv
 
 #k1 = np.sqrt(2.)
 #k2 = 2.0
@@ -113,6 +114,19 @@ def single_camera_response(im1, im2, im3, k1, k2, tau_threshold):
 #    camera_response = np.append(camera_response, np.array([[0,0]]), axis = 0)
 #    return camera_response
 
+#Fits the principle components to the scatter data collected previously
+def fit_camera_model(camera_scatter, f0, h):
+    #get the x datapoints that will be needed
+    indices = np.round(camera_scatter[:, 0]*1023.)
+    indices = indices.astype(np.int)
+    #take the y data and remove the mean response f0
+    scatter_data = camera_scatter[:, 1]
+    deviation = scatter_data - f0[indices]
+    model_scatter = h[:, indices]
+    #find the least-squares fit of the principle components to the datapoints
+    fit = np.dot(np.dot(la.inv(np.dot(model_scatter, np.transpose(model_scatter))), model_scatter),deviation)
+    return fit    
+
 def main():
     #The three exposure lengths of the cameras in seconds (unit doesn't matter)
     exp1 = 1./30
@@ -136,16 +150,41 @@ def main():
     r3, g3, b3 = seperate_rgb(im3)
     
     #get the response functions for each channel
-    camera_response_red = single_camera_response(r1, r2, r3, k1, k2, tau_threshold)
-    camera_response_green = single_camera_response(g1, g2, g3, k1, k2, tau_threshold)
-    camera_response_blue = single_camera_response(b1, b2, b3, k1, k2, tau_threshold)
+    camera_response_red_scatter = single_camera_response(r1, r2, r3, k1, k2, tau_threshold)
+    camera_response_green_scatter = single_camera_response(g1, g2, g3, k1, k2, tau_threshold)
+    camera_response_blue_scatter = single_camera_response(b1, b2, b3, k1, k2, tau_threshold)
     
+    #get the empirical model of camera response functions
+    full_model = np.array([])
+    with open('C:\Users\Owner\Desktop\emor.txt') as csvfile:
+        reader = csv.reader(csvfile, delimiter = ' ')
+        for row in reader:
+            if len(filter(lambda x: x != '', row)) >= 4:
+                full_model = np.append(full_model, filter(lambda x: x != '', row))
+    
+    #first row is the normalized irradiences (linearly spaced), second row is
+    #the mean response, the other 25 rows are principle components
+    full_model = np.resize(full_model.astype(np.float),(27, 256*4))
+    x = full_model[0,:]
+    f0 = full_model[1,:]
+    h = full_model[2:,:]
+    #use only the first three components to avoid over-fitting
+    first_three = h[0:3, :]
+    
+    #get the coefficients for the principle components
+    camera_fit_red = fit_camera_model(camera_response_red_scatter, f0, first_three)
+    camera_fit_green = fit_camera_model(camera_response_green_scatter, f0, first_three)
+    camera_fit_blue = fit_camera_model(camera_response_blue_scatter, f0, first_three)
+        
     #plot the response functions
     pl.clf()
     f, (ax1, ax2, ax3) = pl.subplots(1, 3, sharex = True, sharey = True, figsize = (15, 5))
-    ax1.scatter(camera_response_red[:, 0],camera_response_red[:, 1])
-    ax2.scatter(camera_response_green[:, 0],camera_response_green[:, 1])
-    ax3.scatter(camera_response_blue[:, 0],camera_response_blue[:, 1])
+    ax1.scatter(camera_response_red_scatter[:, 0],camera_response_red_scatter[:, 1])
+    ax2.scatter(camera_response_green_scatter[:, 0],camera_response_green_scatter[:, 1])
+    ax3.scatter(camera_response_blue_scatter[:, 0],camera_response_blue_scatter[:, 1])
+    ax1.plot(x, np.dot(np.transpose(camera_fit_red), first_three) + f0)
+    ax2.plot(x, np.dot(np.transpose(camera_fit_green), first_three) + f0)
+    ax3.plot(x, np.dot(np.transpose(camera_fit_blue), first_three) + f0)
     ax1.set_title('Red')
     ax2.set_title('Green')
     ax3.set_title('Blue')
