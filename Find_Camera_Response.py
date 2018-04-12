@@ -140,9 +140,9 @@ def main():
     tau_threshold = 6
     
     #load  the three images
-    im1 = cv2.imread('C:\Users\Owner\Desktop\ex30.png', 1)
-    im2 = cv2.imread('C:\Users\Owner\Desktop\ex20.png', 1)
-    im3 = cv2.imread('C:\Users\Owner\Desktop\ex10.png', 1)
+    im1 = cv2.imread('C:\Users\Owner\Desktop\ex30.jpg', 1)
+    im2 = cv2.imread('C:\Users\Owner\Desktop\ex20.jpg', 1)
+    im3 = cv2.imread('C:\Users\Owner\Desktop\ex10.jpg', 1)
     
     #seperate the red green and blue channels
     r1, g1, b1 = seperate_rgb(im1)
